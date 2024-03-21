@@ -345,7 +345,7 @@ app.put("/goal/:id", (req, res) => {
   const { title, content } = req.body;
 
   // Setup the SQL query to update the goal
-  const query = "UPDATE goal SET title = ?, content = ? WHERE id = ?";
+  const query = "UPDATE goals SET title = ?, content = ? WHERE id = ?";
 
   // Update the goal in the database using the query
   db.execute(query, [title, content, id], (err, results) => {
@@ -364,7 +364,7 @@ app.delete("/goal/:id", (req, res) => {
   const { id } = req.params;
 
   // Setup the SQL query to delete the goal
-  const query = "DELETE FROM goal WHERE id = ?";
+  const query = "DELETE FROM goals WHERE id = ?";
 
   // Delete the goal from the database using the query
   db.execute(query, [id], (err, results) => {
