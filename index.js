@@ -87,6 +87,7 @@ db.connect((err) => {
 //   });
 // });
 
+// Route to CREATE a journal entry
 app.post("/entry", (req, res) => {
   // Get the title, content, and goals from the request body
   const { title, content, goals } = req.body;
@@ -126,26 +127,6 @@ app.post("/entry", (req, res) => {
   });
 });
 
-// Route to READ all journal entries
-// app.get("/entries", (req, res) => {
-//   // Setup the SQL query to retrieve all journal entries
-//   const query = "SELECT * FROM journal";
-
-//   // Retrieve all journal entries from the database using the query
-//   db.execute(query, (err, results) => {
-//     if (err) {
-//       console.log(err);
-//       res.status(500).json({ success: false, message: "Retrieval failed" });
-//     } else {
-//       res.json({
-//         success: true,
-//         data: results,
-//         message: "Entries retrieved successfully",
-//       });
-//     }
-//   });
-// });
-
 // Route to READ all journal entries with associated goals
 app.get("/entries", (req, res) => {
   // Setup the SQL query to retrieve all journal entries
@@ -170,26 +151,6 @@ app.get("/entries", (req, res) => {
     }
   });
 });
-
-// Route to UPDATE a journal entry
-// app.put("/entry/:id", (req, res) => {
-//   // Get the id, title, and content from the request parameters and body
-//   const { id } = req.params;
-//   const { title, content } = req.body;
-
-//   // Setup the SQL query to update the journal entry
-//   const query = "UPDATE journal SET title = ?, content = ? WHERE id = ?";
-
-//   // Update the journal entry in the database using the query
-//   db.execute(query, [title, content, id], (err, results) => {
-//     if (err) {
-//       console.log(err);
-//       res.status(500).json({ success: false, message: "Update failed" });
-//     } else {
-//       res.json({ success: true, message: "Entry updated successfully" });
-//     }
-//   });
-// });
 
 // Route to UPDATE a journal entry and its associated goals
 app.put("/entry/:id", (req, res) => {
@@ -260,35 +221,37 @@ app.put("/entry/:id", (req, res) => {
 //   });
 // });
 
-// Route to DELETE a journal entry and its associated goals
+// Route to DELETE a journal entry
 app.delete("/entry/:id", (req, res) => {
   // Get the id from the request parameters
   const { id } = req.params;
 
-  // Setup the SQL query to delete the journal entry
-  const deleteEntryQuery = "DELETE FROM journal WHERE id = ?";
+  // Setup the SQL query to delete the associated entries from the entry_goals table
+  const deleteEntryGoalsQuery = "DELETE FROM entry_goals WHERE entry_id = ?";
 
-  // Delete the journal entry from the database using the query
-  db.execute(deleteEntryQuery, [id], (err) => {
+  // Delete the associated entries from the entry_goals table first
+  db.execute(deleteEntryGoalsQuery, [id], (err, results) => {
     if (err) {
-      console.log(err);
+      console.log(err); // Log the error for debugging purposes
       res.status(500).json({ success: false, message: "Delete failed" });
     } else {
-      // Delete the associated goals from the intermediary table
-      const deleteEntryGoalsQuery =
-        "DELETE FROM entry_goals WHERE entry_id = ?";
-      db.execute(deleteEntryGoalsQuery, [id], (err) => {
+      // Once the associated entries are deleted, proceed to delete the journal entry from the journal table
+      const deleteEntryQuery = "DELETE FROM journal WHERE id = ?";
+      db.execute(deleteEntryQuery, [id], (err, results) => {
         if (err) {
-          console.log(err);
-          res.status(500).json({
-            success: false,
-            message: "Goal association deletion failed",
-          });
+          console.log(err); // Log the error for debugging purposes
+          res.status(500).json({ success: false, message: "Delete failed" });
         } else {
-          res.json({
-            success: true,
-            message: "Entry and associated goals deleted successfully",
-          });
+          if (results.affectedRows > 0) {
+            res.json({
+              success: true,
+              message: "Journal entry deleted successfully",
+            });
+          } else {
+            res
+              .status(404)
+              .json({ success: false, message: "Journal entry not found" });
+          }
         }
       });
     }
@@ -363,16 +326,29 @@ app.delete("/goal/:id", (req, res) => {
   // Get the id from the request parameters
   const { id } = req.params;
 
-  // Setup the SQL query to delete the goal
-  const query = "DELETE FROM goals WHERE id = ?";
+  // Setup the SQL query to delete the associated entries from the entry_goals table
+  const deleteEntryGoalsQuery = "DELETE FROM entry_goals WHERE goal_id = ?";
 
-  // Delete the goal from the database using the query
-  db.execute(query, [id], (err, results) => {
+  // Delete the associated entries from the entry_goals table first
+  db.execute(deleteEntryGoalsQuery, [id], (err, results) => {
     if (err) {
-      console.log(err);
+      console.log(err); // Log the error for debugging purposes
       res.status(500).json({ success: false, message: "Delete failed" });
     } else {
-      res.json({ success: true, message: "Entry deleted successfully" });
+      // Once the associated entries are deleted, proceed to delete the goal from the goals table
+      const deleteGoalQuery = "DELETE FROM goals WHERE id = ?";
+      db.execute(deleteGoalQuery, [id], (err, results) => {
+        if (err) {
+          console.log(err); // Log the error for debugging purposes
+          res.status(500).json({ success: false, message: "Delete failed" });
+        } else {
+          if (results.affectedRows > 0) {
+            res.json({ success: true, message: "Goal deleted successfully" });
+          } else {
+            res.status(404).json({ success: false, message: "Goal not found" });
+          }
+        }
+      });
     }
   });
 });
